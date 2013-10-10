@@ -1,0 +1,10 @@
+## Interface: 50400
+## Title: Big Buffs
+## Author: Timba. heavily based on VialCooldowns by Ezzpify/Assembly - Stormreaver/Outland EU - Fan update by Gennoken & dommon_987
+## E-Mail: bigbuffs@gmail.com
+## Version: 0.1
+## Updated for: 5.4.0
+## Notes: Displays currently active major cooldowns or other buffs/debuffs above unit's nameplate
+bbDurations.lua
+BigBuffs.lua
+
