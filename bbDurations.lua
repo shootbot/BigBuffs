@@ -1,10 +1,10 @@
 local addon, ns = ...
-local VialCds = CreateFrame("frame")
+local BigBuffsCooldowns = CreateFrame("frame")
 
 -- All IDs with '--' infront of the spell ID will be commented out.
 -- If you wish to disable an ability tracker, put '--' infront of the ID.
 
-VialCds.VialCds = {
+BigBuffsCooldowns.cooldowns = {
 	--Misc
 	[107079] = 120,				--"Quaking Palm",
 	[28730] = 120,				--"Arcane Torrent",
@@ -315,4 +315,4 @@ VialCds.VialCds = {
 	[116705] = 15,				--"Spear Hand Strike",	
 }
 
-ns.VialCds = VialCds
+ns.BigBuffsCooldowns = BigBuffsCooldowns
