@@ -3,6 +3,7 @@ local BigBuffsCooldowns = ns.BigBuffsCooldowns
 
 local gsub = string.gsub
 local band = bit.band
+local print = print
 
 ----Config----
 local iconSize = 28
@@ -28,45 +29,15 @@ local width, Sfont, size
 
 local interrupts = {"Mind Freeze", "Skull Bash", "Silencing Shot", "Counter Shot", "Counterspell", "Rebuke", "Silence", "Kick", "Wind Shear", "Pummel", "Disrupting Shout", "Shield Bash", "Spell Lock", "Strangulate", "Spear Hand Strike",}
 
-
-local BigBuffs_OnEvent(self, event, ...) then
-	if event == "COMBAT_LOG_EVENT_UNFILTERED"
-		local _, event, _, _, sourceName, sourceFlags, _, _, _, _, _, spellID, spellName = ...
-		if BigBuffsCooldowns.cooldowns[spellID] and band(sourceFlags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0 then
-			sourceName = strmatch(sourceName, "[%P]+")
-			if event == "SPELL_CAST_SUCCESS" or event == "SPELL_AURA_APPLIED" or event == "SPELL_MISSED" or event == "SPELL_SUMMON" then
-				if not spellStartTime[sourceName] then spellStartTime[sourceName] = {} end
-				if not spellStartTime[sourceName][spellName] or GetTime() >= spellStartTime[sourceName][spellName] + 1 then
-					totalIcons = totalIcons + 1
-					sourcetable(sourceName, spellID, spellName)
-					spellStartTime[sourceName][spellName] = GetTime()
-				end
-				if not nameplateFrame:GetScript("OnUpdate") then
-					nameplateFrame:SetScript("OnUpdate", nameplateFrame_OnUpdate)
-					purgeFrame:SetScript("OnUpdate", purgeFrame_OnUpdate)
-				end
-			end
-		end
-	else if event == "PLAYER_ENTERING_WORLD" then
-		db = {}
-		spellStartTime = {}
-		totalIcons = 0
-	end
-end
-
-local BigBuffs = CreateFrame("Frame")
-BigBuffs:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-BigBuffs:RegisterEvent("PLAYER_ENTERING_WORLD")
-BigBuffs:SetScript("OnEvent", BigBuffs_OnEvent)
-
-local addicons = function(name, f)
+local function addicons(name, f)
+	print("addicons")
 	local num = #db[name]
 	if not width then width = f:GetWidth() end
-	if num * iconsize + (num * 2 - 2) > width then
+	if num * iconSize + (num * 2 - 2) > width then
 		size = (width - (num * 2 - 2)) / num
 		Sfont = ceil(size - size / 2)
 	else 
-		size = iconsize
+		size = iconSize
 		Sfont = ceil(size - size / 2)
 	end
 	for i = 1, #db[name] do
@@ -82,7 +53,8 @@ local addicons = function(name, f)
 	end
 end
 
-local hideicons = function(name, f)
+local function hideicons(name, f)
+	print("hideicons")
 	f.Vial = 0
 	for i = 1, #db[name] do
 		db[name][i]:Hide()
@@ -91,24 +63,26 @@ local hideicons = function(name, f)
 	f:SetScript("OnHide", nil)
 end
 
-local icontimer = function(icon)
+local function icontimer(icon)
+	--print("icontimer")
 	local itimer = ceil(icon.endtime - GetTime())
-	if not Sfont then Sfont = ceil(iconsize - iconsize / 2) end
+	if not Sfont then Sfont = ceil(iconSize - iconSize / 2) end
 	if itimer >= 60 then
-		icon.cooldown:SedefaultFont(defaultFont ,Sfont, "OUTLINE")
+		icon.cooldown:SetFont(defaultFont, Sfont, "OUTLINE")
 		icon.cooldown:SetText(ceil(itimer/60).."m")
 	elseif itimer < 60 and itimer >= 1 then
-		icon.cooldown:SedefaultFont(defaultFont ,Sfont, "OUTLINE")
+		icon.cooldown:SetFont(defaultFont, Sfont, "OUTLINE")
 		icon.cooldown:SetText(itimer)
 	else
-		icon.cooldown:SedefaultFont(defaultFont ,Sfont, "OUTLINE")
+		icon.cooldown:SetFont(defaultFont, Sfont, "OUTLINE")
 		icon.cooldown:SetText(" ")
 		icon:SetScript("OnUpdate", nil)
 	end	
 end
 
 		
-local sourcetable = function(sourceName, spellID, spellName)
+local function sourcetable(sourceName, spellID, spellName)
+	print("sourcetable")
 	if not db[sourceName] then db[sourceName] = {} end
 	local _, _, texture = GetSpellInfo(spellID)
 	local cd = BigBuffsCooldowns.cooldowns[spellID]
@@ -173,7 +147,8 @@ local sourcetable = function(sourceName, spellID, spellName)
 end
 		
 local onpurge = 0
-local purgeFrame_OnUpdate = function(self, elapsed)
+local function purgeFrame_OnUpdate(self, elapsed)
+	--print("purgeFrame_OnUpdate")
 	onpurge = onpurge + elapsed
 	if onpurge >= .33 then
 		onpurge = 0
@@ -202,35 +177,37 @@ end
 		
 
 
-local nameplateFrame_OnUpdate = function(self, elapsed)
+local function nameplateFrame_OnUpdate(self, elapsed)
+
 	self.timeSinceLastUpdate = self.timeSinceLastUpdate + elapsed
 	if self.timeSinceLastUpdate > self.updateInterval then
+		print("nameplateFrame_OnUpdate")
 		self.timeSinceLastUpdate = 0
 		local worldFrameChildren = WorldFrame:GetChildren()
 		for i = 1, #worldFrameChildren do
 			local child = worldFrameChildren[i]
 			local childName = child:GetName()
-			if not childName then
-				continue
-			end				
-			if childName:find("NamePlate") then
-				if not child.Vial then child.Vial = 0 end
-				if child:IsVisible() then
-					local _
-					_, child.nameFrame = child:GetChildren()
-					local eman = child.nameFrame:GetRegions()
-					local name = gsub(eman:GetText(), '%s%(%*%)','')
-					if db[name] ~= nil then
-						if child.Vial ~= db[name] then
-							child.Vial = #db[name]
-							for i = 1, #db[name] do
-								db[name][i]:SetParent(f)
-								db[name][i]:Show()
+			if childName then
+							
+				if childName:find("NamePlate") then
+					if not child.Vial then child.Vial = 0 end
+					if child:IsVisible() then
+						local _
+						_, child.nameFrame = child:GetChildren()
+						local eman = child.nameFrame:GetRegions()
+						local name = gsub(eman:GetText(), '%s%(%*%)','')
+						if db[name] ~= nil then
+							if child.Vial ~= db[name] then
+								child.Vial = #db[name]
+								for i = 1, #db[name] do
+									db[name][i]:SetParent(child)
+									db[name][i]:Show()
+								end
+								addicons(name, child)
+								child:HookScript("OnHide", function()
+									hideicons(name, child)
+								end)
 							end
-							addicons(name, f)
-							child:HookScript("OnHide", function()
-								hideicons(name, f)
-							end)
 						end
 					end
 				end
@@ -238,4 +215,35 @@ local nameplateFrame_OnUpdate = function(self, elapsed)
 		end
 	end
 end
-	
+
+local function BigBuffs_OnEvent(self, event, ...) 
+	if event == "COMBAT_LOG_EVENT_UNFILTERED" then
+		local _, event, _, _, sourceName, sourceFlags, _, _, _, _, _, spellID, spellName = ...
+		if BigBuffsCooldowns.cooldowns[spellID] and band(sourceFlags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0 then
+			sourceName = strmatch(sourceName, "[%P]+")
+			if event == "SPELL_CAST_SUCCESS" or event == "SPELL_AURA_APPLIED" or event == "SPELL_MISSED" or event == "SPELL_SUMMON" then
+				if not spellStartTime[sourceName] then spellStartTime[sourceName] = {} end
+				if not spellStartTime[sourceName][spellName] or GetTime() >= spellStartTime[sourceName][spellName] + 1 then
+					totalIcons = totalIcons + 1
+					sourcetable(sourceName, spellID, spellName)
+					spellStartTime[sourceName][spellName] = GetTime()
+				end
+				if not nameplateFrame:GetScript("OnUpdate") then
+					nameplateFrame:SetScript("OnUpdate", nameplateFrame_OnUpdate)
+					purgeFrame:SetScript("OnUpdate", purgeFrame_OnUpdate)
+				end
+			end
+		end
+	else 
+		if event == "PLAYER_ENTERING_WORLD" then
+			db = {}
+			spellStartTime = {}
+			totalIcons = 0
+		end
+	end
+end
+
+local BigBuffs = CreateFrame("Frame")
+BigBuffs:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+BigBuffs:RegisterEvent("PLAYER_ENTERING_WORLD")
+BigBuffs:SetScript("OnEvent", BigBuffs_OnEvent)
