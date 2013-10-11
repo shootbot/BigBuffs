@@ -3,13 +3,15 @@ local BigBuffsCooldowns = ns.BigBuffsCooldowns
 
 local gsub = string.gsub
 local band = bit.band
+local ceil = ceil
 local print = print
+local find = find
 
 ----Config----
-local iconSize = 28
-local iconsOffsetX = 0
-local iconsOffsetY = 30
-local defaultFont = "Interface\\AddOns\\Vial\\tahoma.ttf"
+local ICON_SIZE = 28
+local ICONS_OFFSET_X = 0
+local ICONS_OFFSET_Y = 30
+local FONT = "tahoma.ttf"
 ---------------
 
 local cooldownsToReset = {
@@ -18,72 +20,91 @@ local cooldownsToReset = {
 	--[23989] = {"Deterrence", "Silencing Shot", "Scatter Shot", "Rapid Fire", "Kill Shot", "Lynx Rush", "Dire Beast", "Binding Shot", "Fervor", "Wyvern Sting", "Master's Call", "Bestial Wrath"}, (Rediness no longer existe as of Patch 5.4)
 }
 
-local db = {}
-local spellStartTime = {}
 local purgeFrame = CreateFrame("Frame")
+purgeFrame.timeSinceLastUpdate = 0
 local nameplateFrame = CreateFrame("Frame")
 nameplateFrame.timeSinceLastUpdate = 0
-nameplateFrame.updateInterval = 0.33
+
+local activeIcons = {}
+local spellStartTime = {}
+local updateInterval = 0.33
 local totalIcons = 0
-local width, Sfont, size
+local width, fontHeight
 
 local interrupts = {"Mind Freeze", "Skull Bash", "Silencing Shot", "Counter Shot", "Counterspell", "Rebuke", "Silence", "Kick", "Wind Shear", "Pummel", "Disrupting Shout", "Shield Bash", "Spell Lock", "Strangulate", "Spear Hand Strike",}
 
-local function addicons(name, f)
-	print("addicons")
-	local num = #db[name]
-	if not width then width = f:GetWidth() end
-	if num * iconSize + (num * 2 - 2) > width then
-		size = (width - (num * 2 - 2)) / num
-		Sfont = ceil(size - size / 2)
-	else 
-		size = iconSize
-		Sfont = ceil(size - size / 2)
+local frame_cache = {}
+
+local function acquireFrame(parent)
+	local frame = tremove(frame_cache) or CreateFrame("Frame")
+	frame:SetParent(parent)
+	return frame
+end
+
+local function releaseFrame(frame)
+	frame:Hide()
+	frame:SetParent(nil)
+	frame:ClearAllPoints()
+	tinsert(frame_cache, frame)
+end
+
+local function addIcons(playerName, nameplate)
+	print("addIcons")
+	local num = #activeIcons[playerName]
+	if not width then 
+		width = nameplate:GetWidth() 
 	end
-	for i = 1, #db[name] do
-		db[name][i]:ClearAllPoints()
-		db[name][i]:SetWidth(size)
-		db[name][i]:SetHeight(size)
-		db[name][i].cooldown:SedefaultFont(defaultFont ,Sfont, "OUTLINE")
+	local iconSize
+	if num * ICON_SIZE + (num * 2 - 2) > width then
+		iconSize = (width - (num * 2 - 2)) / num
+	else 
+		iconSize = ICON_SIZE
+	end
+	fontHeight = ceil(iconSize / 2)
+	for i = 1, #activeIcons[playerName] do
+		activeIcons[playerName][i]:ClearAllPoints()
+		activeIcons[playerName][i]:SetWidth(iconSize)
+		activeIcons[playerName][i]:SetHeight(iconSize)
+		activeIcons[playerName][i].cooldown:SetFont(FONT, fontHeight, "OUTLINE")
 		if i == 1 then
-			db[name][i]:SetPoint("TOPLEFT", f, iconsOffsetX, iconsOffsetY)
+			activeIcons[playerName][i]:SetPoint("TOPLEFT", nameplate, ICONS_OFFSET_X, ICONS_OFFSET_Y)
 		else
-			db[name][i]:SetPoint("TOPLEFT", db[name][i-1], size + 2, 0)
+			activeIcons[playerName][i]:SetPoint("TOPLEFT", activeIcons[playerName][i - 1], iconSize + 2, 0)
 		end
 	end
 end
 
-local function hideicons(name, f)
-	print("hideicons")
+local function hideIcons(playerName, f)
+	print("hideIcons")
 	f.Vial = 0
-	for i = 1, #db[name] do
-		db[name][i]:Hide()
-		db[name][i]:SetParent(nil)
+	for i = 1, #activeIcons[playerName] do
+		activeIcons[playerName][i]:Hide()
+		activeIcons[playerName][i]:SetParent(nil)
 	end
-	f:SetScript("OnHide", nil)
+	f:SetScript("OnHide", nil)--??
 end
 
-local function icontimer(icon)
-	--print("icontimer")
-	local itimer = ceil(icon.endtime - GetTime())
-	if not Sfont then Sfont = ceil(iconSize - iconSize / 2) end
-	if itimer >= 60 then
-		icon.cooldown:SetFont(defaultFont, Sfont, "OUTLINE")
-		icon.cooldown:SetText(ceil(itimer/60).."m")
-	elseif itimer < 60 and itimer >= 1 then
-		icon.cooldown:SetFont(defaultFont, Sfont, "OUTLINE")
-		icon.cooldown:SetText(itimer)
+local function icon_OnUpdate(self)
+	--print("icon_OnUpdate")
+	local timeLeft = ceil(self.endtime - GetTime())
+	if not fontHeight then 
+		fontHeight = ceil(ICON_SIZE / 2)
+	end
+	self.cooldown:SetFont(FONT, fontHeight, "OUTLINE")
+	if timeLeft >= 60 then
+		self.cooldown:SetText(ceil(timeLeft / 60).."m")
+	elseif timeLeft < 60 and timeLeft >= 1 then
+		self.cooldown:SetText(timeLeft)
 	else
-		icon.cooldown:SetFont(defaultFont, Sfont, "OUTLINE")
-		icon.cooldown:SetText(" ")
-		icon:SetScript("OnUpdate", nil)
+		self.cooldown:SetText(" ")
+		self:SetScript("OnUpdate", nil)
 	end	
 end
 
 		
-local function sourcetable(sourceName, spellID, spellName)
-	print("sourcetable")
-	if not db[sourceName] then db[sourceName] = {} end
+local function saveSpell(playerName, spellID, spellName)
+	print("saveSpell") 
+	if not activeIcons[playerName] then activeIcons[playerName] = {} end
 	local _, _, texture = GetSpellInfo(spellID)
 	local cd = BigBuffsCooldowns.cooldowns[spellID]
 	local icon = CreateFrame("Frame", nil, UIParent)
@@ -103,71 +124,72 @@ local function sourcetable(sourceName, spellID, spellName)
 			iconBorder:SetAllPoints(icon)
 		end
 	end
-	if spellID == 14185 or spellID == 11958 then --if preparation or cold snap
+	if spellID == 14185 or spellID == 11958 then -- if preparation or cold snap
 		for k, v in ipairs(cooldownsToReset[spellID]) do		
-			for i = 1, #db[sourceName] do
-				if db[sourceName][i] then
-					if db[sourceName][i].name == v then
-						if db[sourceName][i]:IsVisible() then
-							local f = db[sourceName][i]:GetParent()
+			for i = 1, #activeIcons[playerName] do
+				if activeIcons[playerName][i] then
+					if activeIcons[playerName][i].name == v then
+						if activeIcons[playerName][i]:IsVisible() then
+							local f = activeIcons[playerName][i]:GetParent()
 							if f.Vial and f.Vial ~= 0 then
 								f.Vial = 0
 							end
 						end
-						db[sourceName][i]:Hide()
-						db[sourceName][i]:SetParent(nil)
-						tremove(db[sourceName], i)
+						activeIcons[playerName][i]:Hide()
+						activeIcons[playerName][i]:SetParent(nil)
+						tremove(activeIcons[playerName], i)
 						totalIcons = totalIcons - 1
 					end
 				end
 			end
 		end
 	else
-		for i = 1, #db[sourceName] do
-			if db[sourceName][i] then
-				if db[sourceName][i].name == spellName then
-					if db[sourceName][i]:IsVisible() then
-						local f = db[sourceName][i]:GetParent()
+		for i = 1, #activeIcons[playerName] do
+			if activeIcons[playerName][i] then
+				if activeIcons[playerName][i].name == spellName then
+					if activeIcons[playerName][i]:IsVisible() then
+						local f = activeIcons[playerName][i]:GetParent()
 						if f.Vial then
 							f.Vial = 0
 						end
 					end
-					db[sourceName][i]:Hide()
-					db[sourceName][i]:SetParent(nil)
-					tremove(db[sourceName], i)
+					activeIcons[playerName][i]:Hide()
+					activeIcons[playerName][i]:SetParent(nil)
+					tremove(activeIcons[playerName], i)
 					totalIcons = totalIcons - 1
 				end
 			end
 		end
 	end
-	tinsert(db[sourceName], icon)
-	icon:SetScript("OnUpdate", function()
-		icontimer(icon)
-	end)
+	tinsert(activeIcons[playerName], icon)
+	--[[icon:SetScript("OnUpdate", function()
+		icon_OnUpdate(icon)
+	end)]]
+	icon:SetScript("OnUpdate", icon_OnUpdate)
 end
 		
-local onpurge = 0
+
 local function purgeFrame_OnUpdate(self, elapsed)
 	--print("purgeFrame_OnUpdate")
-	onpurge = onpurge + elapsed
-	if onpurge >= .33 then
-		onpurge = 0
+	self.timeSinceLastUpdate = self.timeSinceLastUpdate + elapsed
+	if self.timeSinceLastUpdate >= updateInterval then
+		self.timeSinceLastUpdate = 0
 		if totalIcons == 0 then
 			nameplateFrame:SetScript("OnUpdate", nil)
 			purgeFrame:SetScript("OnUpdate", nil)
 		end
-		for k, v in pairs(db) do
-			for i, c in ipairs(v) do
-				if c.endtime < GetTime() then
-					if c:IsVisible() then
-						local f = c:GetParent()
+		for playerName, playerActiveIcons in pairs(activeIcons) do
+			for i, icon in ipairs(playerActiveIcons) do
+				if icon.endtime < GetTime() then
+					if icon:IsVisible() then
+						local f = icon:GetParent()-- isnt it UIParent?
 						if f.Vial then
 							f.Vial = 0
 						end
 					end
-					c:Hide()
-					c:SetParent(nil)
-					tremove(db[k], i)
+					icon:Hide()
+					icon:SetParent(nil)
+					tremove(activeIcons[playerName], i)
 					totalIcons = totalIcons - 1
 				end
 			end
@@ -178,34 +200,33 @@ end
 
 
 local function nameplateFrame_OnUpdate(self, elapsed)
-
 	self.timeSinceLastUpdate = self.timeSinceLastUpdate + elapsed
-	if self.timeSinceLastUpdate > self.updateInterval then
+	if self.timeSinceLastUpdate > updateInterval then
 		print("nameplateFrame_OnUpdate")
 		self.timeSinceLastUpdate = 0
 		local worldFrameChildren = WorldFrame:GetChildren()
 		for i = 1, #worldFrameChildren do
-			local child = worldFrameChildren[i]
-			local childName = child:GetName()
+			local nameplate = worldFrameChildren[i]
+			local childName = nameplate:GetName()
 			if childName then
 							
 				if childName:find("NamePlate") then
-					if not child.Vial then child.Vial = 0 end
-					if child:IsVisible() then
+					if not nameplate.Vial then nameplate.Vial = 0 end
+					if nameplate:IsVisible() then
 						local _
-						_, child.nameFrame = child:GetChildren()
-						local eman = child.nameFrame:GetRegions()
-						local name = gsub(eman:GetText(), '%s%(%*%)','')
-						if db[name] ~= nil then
-							if child.Vial ~= db[name] then
-								child.Vial = #db[name]
-								for i = 1, #db[name] do
-									db[name][i]:SetParent(child)
-									db[name][i]:Show()
+						_, nameplate.nameFrame = nameplate:GetChildren()-- second nameplate?
+						local eman = nameplate.nameFrame:GetRegions()
+						local playerName = gsub(eman:GetText(), '%s%(%*%)','')
+						if activeIcons[playerName] then
+							if nameplate.Vial ~= activeIcons[playerName] then
+								nameplate.Vial = #activeIcons[playerName]
+								for i = 1, #activeIcons[playerName] do
+									activeIcons[playerName][i]:SetParent(nameplate)
+									activeIcons[playerName][i]:Show()
 								end
-								addicons(name, child)
-								child:HookScript("OnHide", function()
-									hideicons(name, child)
+								addIcons(playerName, nameplate)
+								nameplate:HookScript("OnHide", function()
+									hideIcons(playerName, nameplate)
 								end)
 							end
 						end
@@ -216,34 +237,38 @@ local function nameplateFrame_OnUpdate(self, elapsed)
 	end
 end
 
-local function BigBuffs_OnEvent(self, event, ...) 
-	if event == "COMBAT_LOG_EVENT_UNFILTERED" then
-		local _, event, _, _, sourceName, sourceFlags, _, _, _, _, _, spellID, spellName = ...
-		if BigBuffsCooldowns.cooldowns[spellID] and band(sourceFlags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0 then
-			sourceName = strmatch(sourceName, "[%P]+")
-			if event == "SPELL_CAST_SUCCESS" or event == "SPELL_AURA_APPLIED" or event == "SPELL_MISSED" or event == "SPELL_SUMMON" then
-				if not spellStartTime[sourceName] then spellStartTime[sourceName] = {} end
-				if not spellStartTime[sourceName][spellName] or GetTime() >= spellStartTime[sourceName][spellName] + 1 then
-					totalIcons = totalIcons + 1
-					sourcetable(sourceName, spellID, spellName)
-					spellStartTime[sourceName][spellName] = GetTime()
-				end
-				if not nameplateFrame:GetScript("OnUpdate") then
-					nameplateFrame:SetScript("OnUpdate", nameplateFrame_OnUpdate)
-					purgeFrame:SetScript("OnUpdate", purgeFrame_OnUpdate)
-				end
+local function BigBuffs_OnCOMBAT_LOG_EVENT_UNFILTERED(self, event, ...)
+	local _, event, _, _, playerName, sourceFlags, _, _, _, _, _, spellID, spellName = ...
+	if BigBuffsCooldowns.cooldowns[spellID] and band(sourceFlags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0 then
+		playerName = strmatch(playerName, "[%P]+")
+		if event == "SPELL_CAST_SUCCESS" or event == "SPELL_AURA_APPLIED" or event == "SPELL_MISSED" or event == "SPELL_SUMMON" then
+			if not spellStartTime[playerName] then spellStartTime[playerName] = {} end
+			if not spellStartTime[playerName][spellName] or GetTime() >= spellStartTime[playerName][spellName] + 1 then
+				totalIcons = totalIcons + 1
+				saveSpell(playerName, spellID, spellName)
+				spellStartTime[playerName][spellName] = GetTime()
+			end
+			if not nameplateFrame:GetScript("OnUpdate") then
+				nameplateFrame:SetScript("OnUpdate", nameplateFrame_OnUpdate)
+				purgeFrame:SetScript("OnUpdate", purgeFrame_OnUpdate)
 			end
 		end
-	else 
-		if event == "PLAYER_ENTERING_WORLD" then
-			db = {}
-			spellStartTime = {}
-			totalIcons = 0
-		end
 	end
+end
+
+local function BigBuffs_OnPLAYER_ENTERING_WORLD(self, event, ...) 
+	activeIcons = {}
+	spellStartTime = {}
+	totalIcons = 0
 end
 
 local BigBuffs = CreateFrame("Frame")
 BigBuffs:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 BigBuffs:RegisterEvent("PLAYER_ENTERING_WORLD")
-BigBuffs:SetScript("OnEvent", BigBuffs_OnEvent)
+BigBuffs:SetScript("OnEvent", function(self, event, ...) 
+	if event == "COMBAT_LOG_EVENT_UNFILTERED" then
+		BigBuffs_OnCOMBAT_LOG_EVENT_UNFILTERED(self, event, ...)
+	elseif event == "PLAYER_ENTERING_WORLD" then
+		BigBuffs_OnPLAYER_ENTERING_WORLD(self, event, ...)
+	end
+end)
