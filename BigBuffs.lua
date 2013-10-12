@@ -1,11 +1,5 @@
 local addon, ns = ... 
-local BigBuffsCooldowns = ns.BigBuffsCooldowns 
-
-local gsub = string.gsub
-local band = bit.band
-local ceil = ceil
-local print = print
-local find = find
+local BigBuffsCooldowns = ns.BigBuffsCooldowns
 
 ----Config----
 local ICON_SIZE = 28
@@ -14,26 +8,32 @@ local ICONS_OFFSET_Y = 30
 local FONT = "tahoma.ttf"
 ---------------
 
+local gsub = string.gsub
+local band = bit.band
+local ceil = ceil
+local print = print
+local find = find
+
 local cooldownsToReset = {
 	[11958] = {"Ice Block", "Frost Nova", "Cone of Cold"},
 	[14185] = {"Sprint", "Vanish", "Cloak of Shadows", "Evasion", "Dismantle"},
 	--[23989] = {"Deterrence", "Silencing Shot", "Scatter Shot", "Rapid Fire", "Kill Shot", "Lynx Rush", "Dire Beast", "Binding Shot", "Fervor", "Wyvern Sting", "Master's Call", "Bestial Wrath"}, (Rediness no longer existe as of Patch 5.4)
 }
 
+local interrupts = {"Mind Freeze", "Skull Bash", "Silencing Shot", "Counter Shot", "Counterspell", "Rebuke", "Silence", "Kick", "Wind Shear", "Pummel", "Disrupting Shout", "Shield Bash", "Spell Lock", "Strangulate", "Spear Hand Strike"}
 
 local updateInterval = 0.33
 local timeSinceLastUpdate = 0
 local activeIcons = {}
 local spellStartTime = {}
 local totalIcons = 0
-local width, fontHeight
+local width
+local fontHeight = ceil(ICON_SIZE / 2)
 
-local interrupts = {"Mind Freeze", "Skull Bash", "Silencing Shot", "Counter Shot", "Counterspell", "Rebuke", "Silence", "Kick", "Wind Shear", "Pummel", "Disrupting Shout", "Shield Bash", "Spell Lock", "Strangulate", "Spear Hand Strike",}
-
-local frame_cache = {}
+local frameCache = {}
 
 local function acquireFrame(parent)
-	local frame = tremove(frame_cache) or CreateFrame("Frame")
+	local frame = tremove(frameCache) or CreateFrame("Frame")
 	frame:SetParent(parent)
 	return frame
 end
@@ -42,11 +42,11 @@ local function releaseFrame(frame)
 	frame:Hide()
 	frame:SetParent(nil)
 	frame:ClearAllPoints()
-	tinsert(frame_cache, frame)
+	tinsert(frameCache, frame)
 end
 
 local function addIcons(playerName, nameplate)
-	print("addIcons")
+	--print("addIcons")
 	local num = #activeIcons[playerName]
 	if not width then 
 		width = nameplate:GetWidth() 
@@ -72,21 +72,18 @@ local function addIcons(playerName, nameplate)
 end
 
 local function hideIcons(playerName, nameplate)
-	print("hideIcons")
+	--print("hideIcons")
 	nameplate.Vial = 0
-	for i = 1, #activeIcons[playerName] do
+	for i = #activeIcons[playerName], 1, -1 do
 		activeIcons[playerName][i]:Hide()
 		activeIcons[playerName][i]:SetParent(nil)
 	end
-	nameplate:SetScript("OnHide", nil)--??
+	nameplate:SetScript("OnHide", nil) -- ??
 end
 
 local function icon_OnUpdate(self)
 	--print("icon_OnUpdate")
-	local timeLeft = ceil(self.endtime - GetTime())
-	if not fontHeight then 
-		fontHeight = ceil(ICON_SIZE / 2)
-	end
+	local timeLeft = ceil(self.endTime - GetTime())
 	self.timeLeft:SetFont(FONT, fontHeight, "OUTLINE")
 	if timeLeft >= 60 then
 		self.timeLeft:SetText(ceil(timeLeft / 60).."m")
@@ -98,8 +95,8 @@ local function icon_OnUpdate(self)
 	end	
 end
 		
-local function saveSpell(playerName, spellID, spellName)
-	print("saveSpell") 
+local function addCooldownSpell(playerName, spellID, spellName)
+	print("addCooldownSpell") 
 	if not activeIcons[playerName] then activeIcons[playerName] = {} end
 	local _, _, texture = GetSpellInfo(spellID)
 	local cd = BigBuffsCooldowns.cooldowns[spellID]
@@ -107,13 +104,13 @@ local function saveSpell(playerName, spellID, spellName)
 	icon.texture = icon:CreateTexture(nil, "BORDER")
 	icon.texture:SetAllPoints(icon)
 	icon.texture:SetTexture(texture)
-	icon.endtime = GetTime() + cd
+	icon.endTime = GetTime() + cd
 	icon.timeLeft = icon:CreateFontString(nil, "OVERLAY")
 	icon.timeLeft:SetTextColor(0.7, 1, 0)
 	icon.timeLeft:SetAllPoints(icon)
 	icon.spellName = spellName
-	for k, v in ipairs(interrupts) do
-		if v == spellName then
+	for i, spell in ipairs(interrupts) do
+		if spell == spellName then
 			local iconBorder = icon:CreateTexture(nil, "OVERLAY")
 			iconBorder:SetTexture("Interface\\AddOns\\Vial\\Border.tga")
 			iconBorder:SetVertexColor(1, 0.35, 0)
@@ -123,16 +120,16 @@ local function saveSpell(playerName, spellID, spellName)
 	if spellID == 14185 or spellID == 11958 then -- if preparation or cold snap
 		for k, spell in ipairs(cooldownsToReset[spellID]) do
 			for i = 1, #activeIcons[playerName] do
-				if activeIcons[playerName][i] then
+				if activeIcons[playerName][i] then -- remove?
 					if activeIcons[playerName][i].spellName == spell then
+						-- get rid of this?
 						if activeIcons[playerName][i]:IsVisible() then
-							-- get rid of this?
 							local f = activeIcons[playerName][i]:GetParent()
 							if f.Vial and f.Vial ~= 0 then
 								f.Vial = 0
 							end
-							--
 						end
+						--
 						releaseFrame(activeIcons[playerName][i])
 						tremove(activeIcons[playerName], i)
 						totalIcons = totalIcons - 1
@@ -160,9 +157,6 @@ local function saveSpell(playerName, spellID, spellName)
 		end
 	end
 	tinsert(activeIcons[playerName], icon)
-	--[[icon:SetScript("OnUpdate", function()
-		icon_OnUpdate(icon)
-	end)]]
 	icon:SetScript("OnUpdate", icon_OnUpdate)
 end
 		
@@ -180,12 +174,11 @@ local function BigBuffs_OnUpdate(self, elapsed)
 			local childName = nameplate:GetName()
 			if childName then
 				if childName:find("NamePlate") then
-					if not nameplate.Vial then nameplate.Vial = 0 end
+					if not nameplate.Vial then nameplate.Vial = 0 end -- all this nameplate.Vial shit is bad
 					if nameplate:IsVisible() then
-						local _
-						_, nameplate.nameFrame = nameplate:GetChildren() -- second nameplate?
-						local eman = nameplate.nameFrame:GetRegions()
-						local playerName = gsub(eman:GetText(), '%s%(%*%)','')
+						local _, nameFrame = nameplate:GetChildren() -- ??
+						local eman = nameFrame:GetRegions() -- Returns a list of non-Frame child regions belonging to the frame
+						local playerName = gsub(eman:GetText(), '%s%(%*%)', '') -- ??
 						if activeIcons[playerName] then
 							if nameplate.Vial ~= activeIcons[playerName] then
 								nameplate.Vial = #activeIcons[playerName]
@@ -194,9 +187,7 @@ local function BigBuffs_OnUpdate(self, elapsed)
 									activeIcons[playerName][i]:Show()
 								end
 								addIcons(playerName, nameplate)
-								nameplate:HookScript("OnHide", function()
-									hideIcons(playerName, nameplate)
-								end)
+								nameplate:HookScript("OnHide", hideIcons)
 							end
 						end
 					end
@@ -206,11 +197,10 @@ local function BigBuffs_OnUpdate(self, elapsed)
 		-- from purge_onupdate
 		for playerName, playerActiveIcons in pairs(activeIcons) do
 			for i, icon in ipairs(playerActiveIcons) do
-				if icon.endtime < GetTime() then
+				if icon.endTime < GetTime() then
 					if icon:IsVisible() then
-						local f = icon:GetParent()-- isnt it UIParent?
+						local f = icon:GetParent()
 						if f.Vial then
-							print("icont:GetParent() has Vial")
 							f.Vial = 0
 						end
 					end
@@ -231,7 +221,7 @@ local function BigBuffs_OnCOMBAT_LOG_EVENT_UNFILTERED(self, event, ...)
 			if not spellStartTime[playerName] then spellStartTime[playerName] = {} end
 			if not spellStartTime[playerName][spellName] or GetTime() >= spellStartTime[playerName][spellName] + 1 then
 				totalIcons = totalIcons + 1
-				saveSpell(playerName, spellID, spellName)
+				addCooldownSpell(playerName, spellID, spellName)
 				spellStartTime[playerName][spellName] = GetTime()
 			end
 		end
