@@ -99,12 +99,12 @@ local function addCooldownSpell(playerName, spellID, spellName)
 	print("addCooldownSpell") 
 	if not activeIcons[playerName] then activeIcons[playerName] = {} end
 	local _, _, texture = GetSpellInfo(spellID)
-	local cd = BigBuffsCooldowns.cooldowns[spellID]
+	local duration = BigBuffsCooldowns.duration[spellID]
 	local icon = acquireFrame(UIParent)
 	icon.texture = icon:CreateTexture(nil, "BORDER")
 	icon.texture:SetAllPoints(icon)
 	icon.texture:SetTexture(texture)
-	icon.endTime = GetTime() + cd
+	icon.endTime = GetTime() + duration
 	icon.timeLeft = icon:CreateFontString(nil, "OVERLAY")
 	icon.timeLeft:SetTextColor(0.7, 1, 0)
 	icon.timeLeft:SetAllPoints(icon)
@@ -215,7 +215,7 @@ end
 
 local function BigBuffs_OnCOMBAT_LOG_EVENT_UNFILTERED(self, event, ...)
 	local _, event, _, _, playerName, sourceFlags, _, _, _, _, _, spellID, spellName = ...
-	if BigBuffsCooldowns.cooldowns[spellID] and band(sourceFlags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0 then
+	if BigBuffsCooldowns.duration[spellID] and band(sourceFlags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0 then
 		playerName = strmatch(playerName, "[%P]+")
 		if event == "SPELL_CAST_SUCCESS" or event == "SPELL_AURA_APPLIED" or event == "SPELL_MISSED" or event == "SPELL_SUMMON" then
 			if not spellStartTime[playerName] then spellStartTime[playerName] = {} end
@@ -245,3 +245,13 @@ BigBuffs:SetScript("OnEvent", function(self, event, ...)
 	end
 end)
 BigBuffs:SetScript("OnUpdate", BigBuffs_OnUpdate)
+
+_AURA_BROKEN
+_AURA_BROKEN_SPELL
+_AURA_REFRESH
+_DISPEL
+_AURA_STOLEN
+_AURA_APPLIED
+_AURA_REMOVED
+_SUMMON pet or totem
+http://www.wowwiki.com/API_COMBAT_LOG_EVENT
