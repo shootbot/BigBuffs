@@ -79,11 +79,11 @@ end
 local function hideIcons(playerName, nameplate)
 	--print("hideIcons")
 	nameplate.Vial = 0
-	for i = #activeIcons[playerName], 1, -1 do
+	for i = 1, #activeIcons[playerName] do
 		activeIcons[playerName][i]:Hide()
-		activeIcons[playerName][i]:SetParent(nil)
+		--activeIcons[playerName][i]:SetParent(nil) -- just set parent when you show()
 	end
-	nameplate:SetScript("OnHide", nil) -- ??
+	--nameplate:SetScript("OnHide", nil) -- ??
 end
 
 local function icon_OnUpdate(self, elapsed)
@@ -103,10 +103,9 @@ local function icon_OnUpdate(self, elapsed)
 		self:SetScript("OnUpdate", nil)
 	end	
 end
-		
-local function addCooldownSpell(playerName, spellID, spellName)
-	print("addCooldownSpell") 
-	if not activeIcons[playerName] then activeIcons[playerName] = {} end
+
+
+local function makeIcon(spellID)
 	local _, _, texture = GetSpellInfo(spellID)
 	local cd = BigBuffsCooldowns.duration[spellID]
 	local icon = acquireFrame(UIParent)
@@ -127,34 +126,18 @@ local function addCooldownSpell(playerName, spellID, spellName)
 			iconBorder:SetAllPoints(icon)
 		end
 	end]]
-	if spellID == 14185 or spellID == 11958 then -- if preparation or cold snap
-		for k, spell in ipairs(cooldownsToReset[spellID]) do
-			for i = 1, #activeIcons[playerName] do
-				if activeIcons[playerName][i] then -- remove?
-					if activeIcons[playerName][i].spellName == spell then
-						-- get rid of this?
-						if activeIcons[playerName][i]:IsVisible() then
-							local f = activeIcons[playerName][i]:GetParent()
-							if f.Vial and f.Vial ~= 0 then
-								f.Vial = 0
-							end
-						end
-						--
-						releaseFrame(activeIcons[playerName][i])
-						tremove(activeIcons[playerName], i)
-						totalIcons = totalIcons - 1
-					end
-				end
-			end
-		end
-	else
+	return icon
+end
+
+local function releaseResetedIcons(playerName, spellID)
+	for k, spell in ipairs(cooldownsToReset[spellID]) do
 		for i = 1, #activeIcons[playerName] do
-			if activeIcons[playerName][i] then
-				if activeIcons[playerName][i].spellName == spellName then
-					-- and this
+			if activeIcons[playerName][i] then -- remove?
+				if activeIcons[playerName][i].spellName == spell then
+					-- get rid of this?
 					if activeIcons[playerName][i]:IsVisible() then
 						local f = activeIcons[playerName][i]:GetParent()
-						if f.Vial then
+						if f.Vial and f.Vial ~= 0 then
 							f.Vial = 0
 						end
 					end
@@ -166,60 +149,94 @@ local function addCooldownSpell(playerName, spellID, spellName)
 			end
 		end
 	end
+end
+
+local function releaseOldIcon(playerName, spellID)
+	for i = 1, #activeIcons[playerName] do
+		if activeIcons[playerName][i] then
+			if activeIcons[playerName][i].spellName == spellName then
+				-- and this
+				if activeIcons[playerName][i]:IsVisible() then
+					local f = activeIcons[playerName][i]:GetParent()
+					if f.Vial then
+						f.Vial = 0
+					end
+				end
+				--
+				releaseFrame(activeIcons[playerName][i])
+				tremove(activeIcons[playerName], i)
+				totalIcons = totalIcons - 1
+			end
+		end
+	end
+end
+
+local function addCooldownSpell(playerName, spellID, spellName)
+	print("addCooldownSpell") 
+	if not activeIcons[playerName] then activeIcons[playerName] = {} end
+	if spellID == 14185 or spellID == 11958 then -- if preparation or cold snap
+		releaseResetedIcons(playerName, spellID)
+	end
+	releaseOldIcon(playerName, spellName)
+	local icon = makeIcon(spellID)
 	tinsert(activeIcons[playerName], icon)
 	icon:SetScript("OnUpdate", icon_OnUpdate)
 end
-		
-local function BigBuffs_OnUpdate(self, elapsed)
-	if totalIcons == 0 then
-		return
+
+local function releaseUnusedIcons()
+	for playerName, playerActiveIcons in pairs(activeIcons) do
+		for i, icon in ipairs(playerActiveIcons) do
+			if icon.endTime < GetTime() then
+				if icon:IsVisible() then
+					local f = icon:GetParent()
+					if f.Vial then
+						f.Vial = 0
+					end
+				end
+				releaseFrame(icon)
+				tremove(activeIcons[playerName], i)
+				totalIcons = totalIcons - 1
+			end
+		end
 	end
-	timeSinceLastUpdate = timeSinceLastUpdate + elapsed
-	if timeSinceLastUpdate > updateInterval then
-		--print("OnUpdate")
-		timeSinceLastUpdate = 0
-		for i = 1, WorldFrame:GetNumChildren() do
-			local nameplate = select(i, WorldFrame:GetChildren())
-			local childName = nameplate:GetName()
-			if childName then
-				if find(childName, "NamePlate") then
-					if not nameplate.Vial then nameplate.Vial = 0 end -- all this nameplate.Vial shit is bad
-					if nameplate:IsVisible() then
-						local _, nameFrame = nameplate:GetChildren() -- ??
-						local nameText = nameFrame:GetRegions() -- Returns a list of non-Frame child regions belonging to the frame
-						local playerName = gsub(nameText:GetText(), '%s%(%*%)', '')
-						if activeIcons[playerName] then
-							if nameplate.Vial ~= activeIcons[playerName] then
-								nameplate.Vial = #activeIcons[playerName]
-								for i = 1, #activeIcons[playerName] do
-									activeIcons[playerName][i]:SetParent(nameplate)
-									activeIcons[playerName][i]:Show()
-								end
-								setIconsProperties(playerName, nameplate)
-								nameplate:HookScript("OnHide", function()
-									hideIcons(playerName, nameplate)
-								end)
-							end
+end
+
+local function checkVisibleNameplates()
+	for i = 1, WorldFrame:GetNumChildren() do
+		local nameplate = select(i, WorldFrame:GetChildren())
+		local nameplateName = nameplate:GetName()
+		if nameplateName and find(nameplateName, "NamePlate") then
+			if not nameplate.Vial then nameplate.Vial = 0 end -- all this nameplate.Vial shit is bad
+			if nameplate:IsVisible() then
+				local _, nameFrame = nameplate:GetChildren() -- ??
+				local nameText = nameFrame:GetRegions() -- Returns a list of non-Frame child regions belonging to the frame 
+				local playerName = gsub(nameText:GetText(), '%s%(%*%)', '')
+				if activeIcons[playerName] then
+					if nameplate.Vial ~= activeIcons[playerName] then
+						nameplate.Vial = #activeIcons[playerName]
+						for i = 1, #activeIcons[playerName] do
+							activeIcons[playerName][i]:SetParent(nameplate)
+							activeIcons[playerName][i]:Show()
 						end
+						setIconsProperties(playerName, nameplate)
+						nameplate:HookScript("OnHide", function()
+							hideIcons(playerName, nameplate)
+						end)
 					end
 				end
 			end
 		end
-		-- removing icons
-		for playerName, playerActiveIcons in pairs(activeIcons) do
-			for i, icon in ipairs(playerActiveIcons) do
-				if icon.endTime < GetTime() then
-					if icon:IsVisible() then
-						local f = icon:GetParent()
-						if f.Vial then
-							f.Vial = 0
-						end
-					end
-					releaseFrame(icon)
-					tremove(activeIcons[playerName], i)
-					totalIcons = totalIcons - 1
-				end
-			end
+	end
+end
+
+local function BigBuffs_OnUpdate(self, elapsed)
+	if totalIcons ~= 0 then
+		timeSinceLastUpdate = timeSinceLastUpdate + elapsed
+		if timeSinceLastUpdate > updateInterval then
+			--print("OnUpdate")
+			timeSinceLastUpdate = 0
+			checkVisibleNameplates()
+			releaseUnusedIcons()
 		end
 	end
 end
@@ -245,14 +262,16 @@ local function BigBuffs_OnPLAYER_ENTERING_WORLD(self, event, ...)
 	totalIcons = 0
 end
 
-local BigBuffs = CreateFrame("Frame")
-BigBuffs:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-BigBuffs:RegisterEvent("PLAYER_ENTERING_WORLD")
-BigBuffs:SetScript("OnEvent", function(self, event, ...) 
+local function BigBuffs_OnEvent(self, event, ...)
 	if event == "COMBAT_LOG_EVENT_UNFILTERED" then
 		BigBuffs_OnCOMBAT_LOG_EVENT_UNFILTERED(self, event, ...)
 	elseif event == "PLAYER_ENTERING_WORLD" then
 		BigBuffs_OnPLAYER_ENTERING_WORLD(self, event, ...)
 	end
-end)
+end
+
+local BigBuffs = CreateFrame("Frame")
+BigBuffs:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+BigBuffs:RegisterEvent("PLAYER_ENTERING_WORLD")
+BigBuffs:SetScript("OnEvent", BigBuffs_OnEvent)
 BigBuffs:SetScript("OnUpdate", BigBuffs_OnUpdate)
