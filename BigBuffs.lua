@@ -24,7 +24,6 @@ local cooldownsToReset = {
 	[14185] = {"Sprint", "Vanish", "Cloak of Shadows", "Evasion", "Dismantle"},
 	--[23989] = {"Deterrence", "Silencing Shot", "Scatter Shot", "Rapid Fire", "Kill Shot", "Lynx Rush", "Dire Beast", "Binding Shot", "Fervor", "Wyvern Sting", "Master's Call", "Bestial Wrath"}, (Rediness no longer existe as of Patch 5.4)
 }
-
 local interrupts = {"Mind Freeze", "Skull Bash", "Silencing Shot", "Counter Shot", "Counterspell", "Rebuke", "Silence", "Kick", "Wind Shear", "Pummel", "Disrupting Shout", "Shield Bash", "Spell Lock", "Strangulate", "Spear Hand Strike"}
 
 local updateInterval = 0.5
@@ -78,32 +77,13 @@ end
 
 local function hideIcons(playerName, nameplate)
 	--print("hideIcons")
-	nameplate.Vial = 0
+	--nameplate.Vial = 0 ??
 	for i = 1, #activeIcons[playerName] do
-		activeIcons[playerName][i]:Hide()
-		--activeIcons[playerName][i]:SetParent(nil) -- just set parent when you show()
+		activeIcons[playerName][i]:Hide() -- maybe they should hide automatically?
+		--activeIcons[playerName][i]:SetParent(nil) -- maybe just set parent when you show()
 	end
-	--nameplate:SetScript("OnHide", nil) -- ??
+	--nameplate:SetScript("OnHide", nil) -- BAD
 end
-
-local function icon_OnUpdate(self, elapsed)
-	self.timeSinceLastUpdate = self.timeSinceLastUpdate + elapsed
-	if self.timeSinceLastUpdate < updateInterval then
-		return
-	end
-	self.timeSinceLastUpdate = 0
-	local timeLeft = ceil(self.endTime - GetTime())
-	self.timeLeft:SetFont(FONT, fontHeight, "OUTLINE")
-	if timeLeft >= 60 then
-		self.timeLeft:SetText(ceil(timeLeft / 60).."m")
-	elseif timeLeft < 60 and timeLeft >= 1 then
-		self.timeLeft:SetText(timeLeft)
-	else
-		self.timeLeft:SetText(" ")
-		self:SetScript("OnUpdate", nil)
-	end	
-end
-
 
 local function makeIcon(spellID)
 	local _, _, texture = GetSpellInfo(spellID)
@@ -142,8 +122,9 @@ local function releaseResetedIcons(playerName, spellID)
 						end
 					end
 					--
-					releaseFrame(activeIcons[playerName][i])
+					local nameplate = activeIcons[playerName][i]:GetParent()
 					tremove(activeIcons[playerName], i)
+					releaseFrame(activeIcons[playerName][i])
 					totalIcons = totalIcons - 1
 				end
 			end
@@ -151,7 +132,7 @@ local function releaseResetedIcons(playerName, spellID)
 	end
 end
 
-local function releaseOldIcon(playerName, spellID)
+local function releaseOldIcon(playerName, spellName)
 	for i = 1, #activeIcons[playerName] do
 		if activeIcons[playerName][i] then
 			if activeIcons[playerName][i].spellName == spellName then
@@ -183,6 +164,47 @@ local function addCooldownSpell(playerName, spellID, spellName)
 	icon:SetScript("OnUpdate", icon_OnUpdate)
 end
 
+local function setAndShowIcons(playerName, nameplate)
+	setIconsProperties(playerName, nameplate)
+	for i = 1, #activeIcons[playerName] do
+		activeIcons[playerName][i]:SetParent(nameplate)
+		activeIcons[playerName][i]:Show()
+	end
+	nameplate:HookScript("OnHide", function() -- do they stack? should they hide automatically bcoz of setparent?
+		hideIcons(playerName, nameplate)
+	end)
+end			
+
+local function syncVisibleNameplates()
+	for i = 1, WorldFrame:GetNumChildren() do
+		local nameplate = select(i, WorldFrame:GetChildren())
+		local nameplateName = nameplate:GetName()
+		if nameplateName and find(nameplateName, "NamePlate") then
+			if nameplate:IsVisible() then
+				local _, nameFrame = nameplate:GetChildren() -- ??
+				local nameText = nameFrame:GetRegions() -- Returns a list of non-Frame child regions belonging to the frame 
+				local playerName = gsub(nameText:GetText(), '%s%(%*%)', '')
+				if activeIcons[playerName] then
+					if not nameplate.BigBuffs then
+						nameplate.BigBuffs = {
+							playerName = playerName,
+							iconsNum = activeIcons[playerName]
+						}
+						prepareAndShowIcons(playerName, nameplate)
+					elseif nameplate.BigBuffs.playerName ~= playerName then
+						nameplate.BigBuffs.playerName = playerName
+						nameplate.BigBuffs.iconsNum = #activeIcons[playerName]
+						prepareAndShowIcons(playerName, nameplate)
+					elseif nameplate.BigBuffs.iconsNum ~= #activeIcons[playerName] then
+						nameplate.BigBuffs.iconsNum = #activeIcons[playerName]
+						setAndShowIcons(playerName, nameplate)
+					end
+				end
+			end
+		end
+	end
+end
+
 local function releaseUnusedIcons()
 	for playerName, playerActiveIcons in pairs(activeIcons) do
 		for i, icon in ipairs(playerActiveIcons) do
@@ -190,7 +212,7 @@ local function releaseUnusedIcons()
 				if icon:IsVisible() then
 					local f = icon:GetParent()
 					if f.Vial then
-						f.Vial = 0
+						f.Vial = 0 -- shouldnt be f.Vial = f.Vial - 1? and why only visible
 					end
 				end
 				releaseFrame(icon)
@@ -201,32 +223,20 @@ local function releaseUnusedIcons()
 	end
 end
 
-local function checkVisibleNameplates()
-	for i = 1, WorldFrame:GetNumChildren() do
-		local nameplate = select(i, WorldFrame:GetChildren())
-		local nameplateName = nameplate:GetName()
-		if nameplateName and find(nameplateName, "NamePlate") then
-			if not nameplate.Vial then nameplate.Vial = 0 end -- all this nameplate.Vial shit is bad
-			if nameplate:IsVisible() then
-				local _, nameFrame = nameplate:GetChildren() -- ??
-				local nameText = nameFrame:GetRegions() -- Returns a list of non-Frame child regions belonging to the frame 
-				local playerName = gsub(nameText:GetText(), '%s%(%*%)', '')
-				if activeIcons[playerName] then
-					if nameplate.Vial ~= activeIcons[playerName] then
-						nameplate.Vial = #activeIcons[playerName]
-						for i = 1, #activeIcons[playerName] do
-							activeIcons[playerName][i]:SetParent(nameplate)
-							activeIcons[playerName][i]:Show()
-						end
-						setIconsProperties(playerName, nameplate)
-						nameplate:HookScript("OnHide", function()
-							hideIcons(playerName, nameplate)
-						end)
-					end
-				end
+local function updateIconsText()
+	for playerName, playerActiveIcons in pairs(activeIcons) do
+		for i, icon in ipairs(playerActiveIcons) do
+			local timeLeft = ceil(icon.endTime - GetTime())
+			icon.timeLeft:SetFont(FONT, fontHeight, "OUTLINE")
+			if timeLeft >= 60 then
+				icon.timeLeft:SetText(ceil(timeLeft / 60).."m")
+			elseif timeLeft < 60 and timeLeft >= 1 then
+				icon.timeLeft:SetText(timeLeft)
+			else
+				icon.timeLeft:SetText(" ")
 			end
 		end
-	end
+	end	
 end
 
 local function BigBuffs_OnUpdate(self, elapsed)
@@ -235,8 +245,9 @@ local function BigBuffs_OnUpdate(self, elapsed)
 		if timeSinceLastUpdate > updateInterval then
 			--print("OnUpdate")
 			timeSinceLastUpdate = 0
-			checkVisibleNameplates()
+			syncVisibleNameplates()
 			releaseUnusedIcons()
+			updateIconsText()
 		end
 	end
 end
@@ -275,3 +286,9 @@ BigBuffs:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 BigBuffs:RegisterEvent("PLAYER_ENTERING_WORLD")
 BigBuffs:SetScript("OnEvent", BigBuffs_OnEvent)
 BigBuffs:SetScript("OnUpdate", BigBuffs_OnUpdate)
+
+-- print totalIcons for debug?
+-- when player_entering_world fires state becomes inconsistent
+
+
+		
