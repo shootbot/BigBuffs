@@ -28,7 +28,8 @@ BigBuffsCooldowns.cooldown = {
 	[20549] = 120,				-- War Stomp
 	[69041] = 120,				-- Rocket Barrage
 	[42292] = 120,				-- PvP Trinket
-	--Pets(Death Knight)
+	
+	--Pets(Death Knight)-----
 	--[91797] = 60,				-- Monstrous Blow
 	--[91837] = 45,				-- Putrid Bulwark
 	--[91802] = 30,				-- Shambling Rush
@@ -90,6 +91,7 @@ BigBuffsCooldowns.cooldown = {
 	[89751] = 45,				-- Felstorm
 	--Pets(Mage)
 	[33395] = 25,				-- Freeze --No way to tell which WE cast this still usefull to some degree.
+	
 	--Death Knight----------
 	[108200] = 60,				-- Remorseless Winter
 	[108194] = 30,				-- Asphyxiate
@@ -99,17 +101,18 @@ BigBuffsCooldowns.cooldown = {
 	[49039] = 120,				-- Lichborne
 	[47476] = 60,				-- Strangulate
 	[48707] = 45,				-- Anti-Magic Shell
-	[49576] = 25,				-- Death Grip	
-	[47528] = 15,				-- Mind Freeze
+	--[49576] = 25,				-- Death Grip	
+	--[47528] = 15,				-- Mind Freeze
 	[49222] = 60,				-- Bone Shield
 	[51271] = 60,				-- Pillar of Frost
-	[51052] = 120,				-- Anti-Magic Zone
-	[49028] = 90, 				-- Dancing Rune Weapon
+	--[51052] = 120,				-- Anti-Magic Zone
+	--[49028] = 90, 				-- Dancing Rune Weapon
 	[49206] = 180,				-- Summon Gargoyle
 	--[43265] = 30,				-- Death and Decay
 	[48792] = 180,				-- Icebound Fortitude
 	[48743] = 120,				-- Death Pact
 	--[42650] = 600,				-- Army of the Dead
+	
 	--Druid----------------
 	--[33786] = 20,				-- Feral Cyclone
 	[124974] = 90,				-- Nature's Vigil
@@ -138,6 +141,7 @@ BigBuffsCooldowns.cooldown = {
 	[80965] = 15,				-- Skull Bash
 	--[78674] = 15,				-- Starsurge
 	[29166] = 180,				-- Innervate
+	
 	--Hunter--------------
 	[120697] = 90,				-- Lynx Rush
 	[120679] = 30,				-- Dire Beast
@@ -155,6 +159,7 @@ BigBuffsCooldowns.cooldown = {
 	[34490] = 24,				-- Silencing Shot
 	[147362] = 24,				-- Counter Shot
 	[19574] = 60,				-- Bestial Wrath      
+	
 	--Mage----------------
 	[108839] = 45,				-- Ice Floes
 	[110959] = 90,				-- Greater Invisibility
@@ -176,6 +181,7 @@ BigBuffsCooldowns.cooldown = {
 	[12043] = 90,				-- Presence of Mind
 	[11129] = 45,				-- Combustion
 	[31661] = 20,				-- Dragon's Breath
+	
 	--Paladin--------------
 	[115750] = 120,				-- Blinding Light
 	[85499] = 45,				-- Speed of Light
@@ -196,6 +202,7 @@ BigBuffsCooldowns.cooldown = {
 	[31821] = 180,				-- Devotion Aura
 	[20066] = 15,				-- Repentance
 	--[31850] = 180,				-- Ardent Defender
+	
 	--Priest----------------
 	--[605] = 30,					-- Dominate Mind
 	[108921] = 45,				-- Psyfiend
@@ -219,23 +226,25 @@ BigBuffsCooldowns.cooldown = {
 	--[19236] = 120,				-- Desperate Prayer
 	--[724] = 180,				-- Lightwell
 	--[62618] = 180,				-- Power Word: Barrier
+	
 	--Rogue-----------------
 	[121471] = 180,				-- Shadow Blades
-	[1776] = 10,				-- Gouge
-	[2094] = 120,				-- Blind
-	[1766] = 15,				-- Kick
-	[2983] = 60,				-- Sprint
+	--[1776] = 10,				-- Gouge
+	--[2094] = 120,				-- Blind
+	--[1766] = 15,				-- Kick
+	--[2983] = 60,				-- Sprint
 	[14185] = 300,				-- Preparation
 	[31224] = 60,				-- Cloak of Shadows
 	[1856] = 120,				-- Vanish
-	[36554] = 20,				-- Shadowstep
-	[5277] = 120,				-- Evasion
+	--[36554] = 20,				-- Shadowstep
+	--[5277] = 120,				-- Evasion
 	--[408] = 20,				-- Kidney Shot
-	[51722] = 60,				-- Dismantle
+	--[51722] = 60,				-- Dismantle
 	[76577] = 180,				-- Smoke Bomb
 	[51690] = 120,				-- Killing Spree
 	[51713] = 60, 				-- Shadow Dance
 	[79140] = 120,				-- Vendetta
+	
 	--Shaman----------------
 	--[5394] = 30,				-- Healing Stream Totem
 	[108269] = 45,				-- Capacitor Totem
@@ -256,6 +265,7 @@ BigBuffsCooldowns.cooldown = {
 	[79206] = 120,				-- Spiritwalker's Grace
 	[16166] = 90,				-- Elemental Mastery
 	--[16188] = 90,				-- Ancestral Swiftness
+	
 	--Warlock----------------
 	[111397] = 30,				-- Blood Horror
 	[110913] = 180,				-- Dark Bargain
@@ -270,6 +280,7 @@ BigBuffsCooldowns.cooldown = {
 	--[54785] = 45,				-- Demon Leap
 	[48020] = 30,				-- Demonic Circle: Teleport
 	--[91711] = 30,				-- Nether Ward
+	
 	--Warrior----------------
 	[107574] = 180,				-- Avatar
 	[12292] = 60, 				-- Bloodbath
@@ -290,6 +301,7 @@ BigBuffsCooldowns.cooldown = {
 	[12975] = 180,				-- Last Stand
 	[46924] = 60,				-- Bladestorm
 	[46968] = 40,				-- Shockwave
+	
 	--Monk-----------------
 	[123904] = 180,				-- Invoke Xuen, the White Tiger
 	--[116847] = 6,				-- Rushing Jade Wind
@@ -343,14 +355,14 @@ BigBuffsCooldowns.duration = {
 	--[51052] = 3,				-- Anti-Magic Zone
 	
 	--Druid----------------
-	[1850] = 15,				-- Dash
+	--[1850] = 15,				-- Dash
 	[22812] = 12,				-- Barkskin
-	[16689] = 45,				-- Nature's Grasp
+	--[16689] = 45,				-- Nature's Grasp
 	--[29166] = 10,				-- Innervate
 	[106922] = 20,				-- Might of Ursoc
 	--[740] = 8,				-- Tranquility
 	--[102280] = 4,				-- Displacer Beast
-	[102351] = 30,				-- Cenarion Ward
+	--[102351] = 30,				-- Cenarion Ward
 	[124974] = 12,				-- Nature's Vigil
 	[108288] = 45,				-- Heart of the Wild
 	[112071] = 15,				-- Celestial Alignment
@@ -363,4 +375,29 @@ BigBuffsCooldowns.duration = {
 	[102342] = 12,				-- Ironbark
 	[33891] = 30,				-- Tree of Life
 		
+	--Hunter----------------
+	[3045] = 15,				-- Rapid Fire
+	[19263] = 5,				-- Deterrence
+	[121818] = 20,				-- Stampede
+	[90355] = 40,				-- Ancient Hysteria
+	
+	--Warrior---------------
+	
+	--Shaman----------------
+	[2825] = 40,				-- Bloodlust
+	
+	--Paladin---------------
+	
+	--Warlock---------------
+	
+	--Mage------------------
+	[80353] = 40,				-- Time Warp
+	
+	
+	--Priest----------------
+	
+	--Rogue-----------------
+	
+	--Monk------------------
+	
 }
